@@ -3,7 +3,7 @@ use MOVIES_W3;
 ------------------------------------- initial tasks -------------------------------------
 
 -- 1) Write a SQL query to find the name and year of the movies. Return movie title, movie release year.
-select mov_time, mov_year
+select mov_title, mov_year
 from movie;
 
 -- 2) write a SQL query to find when the movie ‘American Beauty’ released. Return movie release year.
@@ -33,14 +33,14 @@ select rev_name
 from reviewer
 inner join rating
 on reviewer.rev_id = rating.rev_id
-where rev_stars >= 7;
+where rev_stars >= 7
+and rev_name <> ' ';
 
 -- 7) write a SQL query to find the movies without any rating. Return movie title.
 select mov_title
 from movie
-inner join rating
-on movie.mov_id = rating.mov_id
-where rev_stars is null;
+where mov_id not in (
+	select mov_id from rating);
 
 -- 8) write a SQL query to find the movies with ID 905 or 907 or 917. Return movie title.
 select mov_title
@@ -70,7 +70,7 @@ where mov_id in (
 	where mov_title = 'Annie Hall'));
 
 -- 2) write a SQL query to find the director who directed a movie that casted a role for 'Eyes Wide Shut'. Return director first name, last name.
-select dir_fname
+select dir_fname, dir_lname
 from director
 where dir_id in (
 	select dir_id from movie_direction
@@ -79,9 +79,9 @@ where dir_id in (
 		where mov_title = 'Eyes Wide Shut'));
 
 -- 3) write a SQL query to find those movies, which released in the country besides UK. Return movie title, movie year, movie time, date of release, releasing country.
-select mov_time, mov_year, mov_time, mov_dt_rel, mov_rel_country
+select mov_title, mov_year, mov_time, mov_dt_rel, mov_rel_country
 from movie
-where mov_rel_country = 'UK';
+where mov_rel_country <> 'UK';
 
 -- 4) write a SQL query to find those movies where reviewer is unknown. Return movie title, year, release date, director first name, last name, actor first name, last name.
 select mov_title
@@ -102,28 +102,27 @@ where mov_id in (
 		where dir_fname = 'Woody' and dir_lname = 'Allen'));
 
 -- 6) write a SQL query to find those years, which produced at least one movie and that, received a rating of more than three stars. Sort the result-set in ascending order by movie year. Return movie year.
-select mov_year, COUNT(mov_year) as Movie_Count
+select distinct mov_year
 from movie
 where mov_id in (
 	select mov_id from rating
 	where rev_stars > 3)
-	group by mov_year
-	having COUNT(mov_year) > 1
 	order by mov_year;
 
 -- 7) write a SQL query to find those movies, which have no ratings. Return movie title.
 select mov_title
 from movie
 where mov_id in (
-	select mov_id from rating
-	where rev_stars is null);
+	select mov_id from movie
+	where mov_id not in (
+		select mov_id from rating));
 
 -- 8) write a SQL query to find those reviewers who have rated nothing for some movies. Return reviewer name.
 select rev_name
 from reviewer
 where rev_id in (
 	select rev_id from rating
-	where num_o_ratings is null and rev_name <> ' ');
+	where rev_stars is null);
 
 -- 9) write a SQL query to find those movies, which reviewed by a reviewer and got a rating. Sort the result-set in ascending order by reviewer name, movie title, review Stars. Return reviewer name, movie title, review Stars.
 select rev_name, mov_title, rev_stars
@@ -131,8 +130,8 @@ from reviewer, movie, rating
 where rev_stars in (
 	select rev_stars from rating
 	where rating.mov_id = movie.mov_id
-	and rev_stars <> ' '
-	and num_o_ratings <> ' ')
+	and rev_stars is not null
+	and num_o_ratings is not null)
 and reviewer.rev_id in (
 	select rev_id from rating
 	where rating.mov_id = movie.mov_id)
@@ -154,13 +153,12 @@ and rev_id in (
 group by rev_name, mov_title;
 
 -- 11) write a SQL query to find those movies, which have received highest number of stars. Group the result set on movie title and sorts the result-set in ascending order by movie title. Return movie title and maximum number of review stars.
-select mov_title
-from movie
-where mov_id in (
-select mov_id from rating
-where rev_stars in (
-select max(rating.rev_stars)
-from rating));
+select mov_title, max(rev_stars)
+from movie, rating
+where movie.mov_id = rating.mov_id
+and rating.rev_stars is not null
+group by mov_title
+order by mov_title;
 
 -- 12) write a SQL query to find all reviewers who rated the movie 'American Beauty'. Return reviewer name.
 select rev_name
@@ -178,9 +176,9 @@ select mov_title
 from movie
 where mov_id in (
 	select mov_id from rating
-	where rating.rev_id in(
-	select rev_id from reviewer
-	where rev_name <> 'Paul Monks'));
+	where rating.rev_id not in(
+		select rev_id from reviewer
+		where rev_name = 'Paul Monks'));
 
 -- 14) write a SQL query to find the lowest rated movies. Return reviewer name, movie title, and number of stars for those movies.
 select rev_name, mov_title, rev_stars
@@ -257,7 +255,7 @@ inner join movie_cast
 on movie_direction.mov_id = movie_cast.mov_id
 inner join movie
 on movie.mov_id = movie_cast.mov_id
-where role = 'Sean Maguire'
+where role = 'Sean Maguire';
 
 -- 5) write a SQL query to find the actors who have not acted in any movie between1990 and 2000 (Begin and end values are included.). Return actor first name, last name, movie title and release year.
 select act_fname, act_lname, mov_title, mov_year
@@ -266,7 +264,7 @@ inner join movie_cast
 on actor.act_id = movie_cast.act_id
 inner join movie
 on movie.mov_id = movie_cast.mov_id
-where mov_year between 1990 and 2000;
+where mov_year not between 1990 and 2000;
 
 -- 6) write a SQL query to find the directors with number of genres movies. Group the result set on director first name, last name and generic title. Sort the result-set in ascending order by director first name and last name. Return director first name, last name and number of genres movies.
 select dir_fname, dir_lname, gen_title
@@ -334,7 +332,7 @@ where mov_time in (
 	select min(mov_time) from movie);
 
 -- 12) write a SQL query to find those years when a movie received a rating of 3 or 4. Sort the result in increasing order on movie year. Return move year.
-select mov_year
+select distinct mov_year
 from movie
 inner join rating
 on movie.mov_id = rating.mov_id
@@ -348,21 +346,17 @@ inner join rating
 on reviewer.rev_id = rating.rev_id
 inner join movie
 on rating.mov_id = movie.mov_id
+where rev_name <> ' '
 order by rev_name, mov_title, rev_stars;
 
 -- 14) write a SQL query to find those movies that have at least one rating and received highest number of stars. Sort the result-set on movie title. Return movie title and maximum review stars.
-select mov_title, rev_stars as [Maximum REview Star]
+select mov_title, max(rev_stars) as [Maximum Review Star]
 from movie
 inner join rating
 on movie.mov_id = rating.mov_id
-inner join reviewer
-on rating.rev_id = reviewer.rev_id
-where rev_stars in (
-	select max(rev_stars) from rating)
-and num_o_ratings in (
-	select num_o_ratings from rating
-	group by num_o_ratings
-	having count(num_o_ratings) > 0);
+group by mov_title
+having max(rev_stars) > 0
+order by mov_title;
 
 -- 15) write a SQL query to find those movies, which have received ratings. Return movie title, director first name, director last name and review stars.
 select mov_title, dir_fname, dir_lname, rev_stars
@@ -375,7 +369,7 @@ inner join movie_direction
 on movie.mov_id = movie_direction.mov_id
 inner join director
 on movie_direction.dir_id = director.dir_id
-where rev_stars <> ' ' and num_o_ratings <> ' ';
+where rev_stars is not null;
 
 -- 16) Write a query in SQL to find the movie title, actor first and last name, and the role for those movies where one or more actors acted in two or more movies.
 select mov_title, act_fname, act_lname, role
@@ -387,8 +381,4 @@ on movie_cast.act_id = actor.act_id
 where movie_cast.act_id in (
 	select act_id from movie_cast
 	group by act_id
-	having count(act_id) > 0)
-and movie_cast.mov_id in (
-	select mov_id from movie_cast
-	group by mov_id
-	having count(mov_id) > 1);
+	having count(act_id) > 1);
